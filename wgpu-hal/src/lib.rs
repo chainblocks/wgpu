@@ -62,7 +62,7 @@ mod gles;
 #[cfg(all(feature = "metal"))]
 mod metal;
 #[cfg(feature = "vulkan")]
-mod vulkan;
+pub mod vulkan;
 
 pub mod auxil;
 pub mod api {
