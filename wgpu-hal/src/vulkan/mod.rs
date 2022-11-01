@@ -666,6 +666,18 @@ impl crate::Queue<Api> for Queue {
     }
 }
 
+impl Queue {
+    /// Prepares an external present operation
+    /// returned is a semaphore to wait for previously submitted work on this queue
+    pub fn prepare_present_semaphore(&mut self) -> Option<vk::Semaphore> {
+        if let Some(old_index) = self.relay_index.take() {
+            Some(self.relay_semaphores[old_index])
+        } else {
+            None
+        }
+    }
+}
+
 impl From<vk::Result> for crate::DeviceError {
     fn from(result: vk::Result) -> Self {
         match result {

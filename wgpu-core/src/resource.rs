@@ -394,6 +394,29 @@ impl<G: GlobalIdentityHandlerFactory> Global<G> {
 
         hal_device_callback(hal_device)
     }
+
+    /// # Safety
+    ///
+    /// - The raw device handle must not be manually destroyed
+    pub unsafe fn device_and_queue_as_hal_mut<
+        A: HalApi,
+        F: FnOnce(Option<(&mut A::Device, &mut A::Queue)>) -> R,
+        R,
+    >(
+        &self,
+        id: DeviceId,
+        hal_device_callback: F,
+    ) -> R {
+        profiling::scope!("Device::as_hal");
+
+        let hub = A::hub(self);
+        let mut token = Token::root();
+        let (mut guard, _) = hub.devices.write(&mut token);
+        let device = guard.get_mut(id).ok();
+        let device_and_queue = device.map(|device| (&mut device.raw, &mut device.queue));
+
+        hal_device_callback(device_and_queue)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
