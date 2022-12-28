@@ -128,6 +128,9 @@ impl PhysicalDeviceFeatures {
                 .sampler_anisotropy(
                     downlevel_flags.contains(wgt::DownlevelFlags::ANISOTROPIC_FILTERING),
                 )
+				.shader_storage_image_multisample(
+                    true, 
+                )
                 .texture_compression_etc2(
                     requested_features.contains(wgt::Features::TEXTURE_COMPRESSION_ETC2),
                 )
