@@ -32,6 +32,9 @@ pub(super) fn compile_fxc(
     {
         compile_flags |= d3dcompiler::D3DCOMPILE_DEBUG | d3dcompiler::D3DCOMPILE_SKIP_OPTIMIZATION;
     }
+
+    let source_name = std::ffi::CString::new(source_name).unwrap();
+
     let mut error = d3d12::Blob::null();
     let hr = unsafe {
         profiling::scope!("d3dcompiler::D3DCompile");
