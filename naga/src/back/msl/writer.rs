@@ -1186,20 +1186,15 @@ impl<W: Write> Writer<W> {
         Ok(())
     }
 
-    fn put_atomic_operation(
+    fn put_atomic_operation_simple(
         &mut self,
         pointer: Handle<crate::Expression>,
         key: &str,
         value: Handle<crate::Expression>,
         context: &ExpressionContext,
+        policy: index::BoundsCheckPolicy,
+        checked: bool,
     ) -> BackendResult {
-        // If the pointer we're passing to the atomic operation needs to be conditional
-        // for `ReadZeroSkipWrite`, the condition needs to *surround* the atomic op, and
-        // the pointer operand should be unchecked.
-        let policy = context.choose_bounds_check_policy(pointer);
-        let checked = policy == index::BoundsCheckPolicy::ReadZeroSkipWrite
-            && self.put_bounds_checks(pointer, context, back::Level(0), "")?;
-
         // If requested and successfully put bounds checks, continue the ternary expression.
         if checked {
             write!(self.out, " ? ")?;
@@ -1209,6 +1204,7 @@ impl<W: Write> Writer<W> {
             self.out,
             "{NAMESPACE}::atomic_{key}_explicit({ATOMIC_REFERENCE}"
         )?;
+
         self.put_access_chain(pointer, policy, context)?;
         write!(self.out, ", ")?;
         self.put_expression(value, context, true)?;
@@ -1220,6 +1216,96 @@ impl<W: Write> Writer<W> {
         }
 
         Ok(())
+    }
+
+    fn put_atomic_operation_compare_exchange(
+        &mut self,
+        pointer: Handle<crate::Expression>,
+        value: Handle<crate::Expression>,
+        compare_expression: Handle<crate::Expression>,
+        result: Handle<crate::Expression>,
+        context: &ExpressionContext,
+        policy: index::BoundsCheckPolicy,
+        checked: bool,
+    ) -> BackendResult {
+        // If requested and successfully put bounds checks, continue the ternary expression.
+        if checked {
+            write!(self.out, " ? ")?;
+        }
+
+        let result_type_name = match context.info[result].ty {
+            TypeResolution::Handle(ty_handle) => {
+                let ty_name = TypeContext {
+                    handle: ty_handle,
+                    gctx: context.module.to_ctx(),
+                    names: &self.names,
+                    access: crate::StorageAccess::empty(),
+                    binding: None,
+                    first_time: false,
+                };
+                ty_name
+            }
+            _ => {
+                return Err(Error::FeatureNotImplemented(
+                    "Failed to find result type required to evaluate compare exchange expression".to_string(),
+                ));
+            }
+        };
+
+        write!(
+            self.out,
+            "__make_atomic_cas_result<{result_type_name}>({ATOMIC_REFERENCE}"
+        )?;
+        self.put_access_chain(pointer, policy, context)?;
+        write!(self.out, ", ")?;
+        self.put_expression(compare_expression, context, true)?;
+        write!(self.out, ", ")?;
+        self.put_expression(value, context, true)?;
+        write!(self.out, ")")?;
+
+        // Finish the ternary expression.
+        if checked {
+            write!(self.out, " : DefaultConstructible()")?;
+        }
+
+        Ok(())
+    }
+
+    fn put_atomic_operation(
+        &mut self,
+        pointer: Handle<crate::Expression>,
+        key: &str,
+        value: Handle<crate::Expression>,
+        compare_expression: Option<Handle<crate::Expression>>,
+        result: Option<Handle<crate::Expression>>,
+        context: &ExpressionContext,
+    ) -> BackendResult {
+        // If the pointer we're passing to the atomic operation needs to be conditional
+        // for `ReadZeroSkipWrite`, the condition needs to *surround* the atomic op, and
+        // the pointer operand should be unchecked.
+        let policy = context.choose_bounds_check_policy(pointer);
+        let checked = policy == index::BoundsCheckPolicy::ReadZeroSkipWrite
+            && self.put_bounds_checks(pointer, context, back::Level(0), "")?;
+
+        if let Some(expr) = compare_expression {
+            if let Some(result) = result {
+                self.put_atomic_operation_compare_exchange(
+                    pointer,
+                    value,
+                    expr,
+                    result,
+                    context,
+                    policy,
+                    checked,
+                )
+            } else {
+                return Err(Error::FeatureNotImplemented(
+                    "Result type must be provided to evaluate compare exchange expression".into(),
+                ));
+            }
+        } else {
+            self.put_atomic_operation_simple(pointer, key, value, context, policy, checked)
+        }
     }
 
     /// Emit code for the arithmetic expression of the dot product.
@@ -3098,7 +3184,14 @@ impl<W: Write> Writer<W> {
                         fun.to_msl()?
                     };
 
-                    self.put_atomic_operation(pointer, fun_str, value, &context.expression)?;
+                    self.put_atomic_operation(
+                        pointer,
+                        fun_str,
+                        value,
+                        fun.get_compare_expression(),
+                        result,
+                        &context.expression,
+                    )?;
                     // done
                     writeln!(self.out, ";")?;
                 }
@@ -3467,6 +3560,17 @@ impl<W: Write> Writer<W> {
         }
         writeln!(self.out)?;
 
+        writeln!(
+            self.out,
+            r#"
+        template<typename R, typename T, typename A> R __make_atomic_cas_result(device A* ptr, T cmp_, T v) {{
+            T cmp = cmp_;
+            bool exchanged = {NAMESPACE}::atomic_compare_exchange_weak_explicit(ptr, &cmp, v, {NAMESPACE}::memory_order_relaxed, {NAMESPACE}::memory_order_relaxed);
+            return R{{cmp, exchanged}};
+        }}
+        "#
+        )?;
+
         {
             // Make a `Vec` of all the `GlobalVariable`s that contain
             // runtime-sized arrays.
@@ -3727,7 +3831,9 @@ impl<W: Write> Writer<W> {
                         struct_name, struct_name
                     )?;
                 }
-                &crate::PredeclaredType::AtomicCompareExchangeWeakResult { .. } => {}
+                &crate::PredeclaredType::AtomicCompareExchangeWeakResult { .. } => {
+                    
+                }
             }
         }
 
@@ -5967,9 +6073,7 @@ impl crate::AtomicFunction {
             Self::Min => "fetch_min",
             Self::Max => "fetch_max",
             Self::Exchange { compare: None } => "exchange",
-            Self::Exchange { compare: Some(_) } => Err(Error::FeatureNotImplemented(
-                "atomic CompareExchange".to_string(),
-            ))?,
+            Self::Exchange { compare: Some(cmp) } => "compare_exchange_weak",
         })
     }
 
@@ -5982,4 +6086,47 @@ impl crate::AtomicFunction {
             ))?,
         })
     }
+
+    fn get_compare_expression(&self) -> Option<Handle<crate::Expression>> {
+        match self {
+            Self::Exchange { compare: Some(cmp) } => Some(*cmp),
+            _ => None,
+        }
+    }
+
+    // let res_name = format!("{}{}", back::BAKE_PREFIX, result.index());
+    // self.start_baking_expression(result, &context.expression, &res_name)?;
+    // self.named_expressions.insert(result, res_name);
+    // ----------------
+    // let policy = context.expression.choose_bounds_check_policy(pointer);
+
+    // let result_type_name = match context.expression.info[result].ty {
+    //     TypeResolution::Handle(ty_handle) => {
+    //         let ty_name = TypeContext {
+    //             handle: ty_handle,
+    //             gctx: context.expression.module.to_ctx(),
+    //             names: &self.names,
+    //             access: crate::StorageAccess::empty(),
+    //             binding: None,
+    //             first_time: false,
+    //         };
+    //         ty_name
+    //     }
+    //     _ => {
+    //         return Err(Error::FeatureNotImplemented(
+    //             "atomic CompareExchange".to_string(),
+    //         ));
+    //     }
+    // };
+
+    // write!(
+    //     self.out,
+    //     "__make_atomic_cas_result<{result_type_name}>({ATOMIC_REFERENCE}"
+    // )?;
+    // self.put_access_chain(pointer, policy, &context.expression)?;
+    // write!(self.out, ", ")?;
+    // self.put_expression(cmp, &context.expression, true)?;
+    // write!(self.out, ", ")?;
+    // self.put_expression(value, &context.expression, true)?;
+    // write!(self.out, ")")?;
 }
