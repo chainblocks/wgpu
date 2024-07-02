@@ -12,7 +12,7 @@ use objc::{
     msg_send,
     rc::autoreleasepool,
     runtime::{Class, Object, Sel, BOOL, NO, YES},
-    sel, sel_impl,
+    sel
 };
 use parking_lot::{Mutex, RwLock};
 
