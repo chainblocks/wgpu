@@ -781,7 +781,7 @@ impl<A: hal::Api> Example<A> {
 
 cfg_if::cfg_if! {
     // Apple + Metal
-    if #[cfg(all(any(target_os = "macos", target_os = "ios"), feature = "metal"))] {
+    if #[cfg(all(any(target_os = "macos", target_os = "ios", target_os = "visionos"), feature = "metal"))] {
         type Api = hal::api::Metal;
     }
     // Wasm + Vulkan

@@ -740,7 +740,7 @@ impl crate::Instance for Instance {
                     "libEGL.dll",
                 )
             }
-        } else if cfg!(any(target_os = "macos", target_os = "ios")) {
+        } else if cfg!(any(target_os = "macos", target_os = "ios", target_os = "visionos")) {
             unsafe {
                 khronos_egl::DynamicInstance::<khronos_egl::EGL1_4>::load_required_from_filename(
                     "libEGL.dylib",
@@ -1262,7 +1262,7 @@ impl crate::Surface for Surface {
                         let window_ptr = handle.ns_view.as_ptr();
                         #[cfg(target_os = "macos")]
                         let window_ptr = {
-                            use objc::{msg_send, runtime::Object, sel, sel_impl};
+                            use objc::{msg_send, runtime::Object, sel};
                             // ns_view always have a layer and don't need to verify that it exists.
                             let layer: *mut Object =
                                 msg_send![handle.ns_view.as_ptr() as *mut Object, layer];
