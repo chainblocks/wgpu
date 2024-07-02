@@ -38,7 +38,7 @@
 #![cfg_attr(
     all(
         not(all(feature = "vulkan", not(target_arch = "wasm32"))),
-        not(all(feature = "metal", any(target_os = "macos", target_os = "ios"))),
+        not(all(feature = "metal", any(target_os = "macos", target_os = "ios", target_os = "visionos"))),
         not(all(feature = "dx12", windows)),
         not(feature = "gles"),
     ),
@@ -253,12 +253,12 @@ macro_rules! define_backend_caller {
 // expands to `expr` if the `"vulkan"` feature is enabled, or to a panic
 // otherwise.
 define_backend_caller! { gfx_if_vulkan, gfx_if_vulkan_hidden, "vulkan" if all(feature = "vulkan", not(target_arch = "wasm32")) }
-define_backend_caller! { gfx_if_metal, gfx_if_metal_hidden, "metal" if all(feature = "metal", any(target_os = "macos", target_os = "ios")) }
+define_backend_caller! { gfx_if_metal, gfx_if_metal_hidden, "metal" if all(feature = "metal", any(target_os = "macos", target_os = "ios", target_os = "visionos")) }
 define_backend_caller! { gfx_if_dx12, gfx_if_dx12_hidden, "dx12" if all(feature = "dx12", windows) }
 define_backend_caller! { gfx_if_gles, gfx_if_gles_hidden, "gles" if feature = "gles" }
 define_backend_caller! { gfx_if_empty, gfx_if_empty_hidden, "empty" if all(
     not(any(feature = "metal", feature = "vulkan", feature = "gles")),
-    any(target_os = "macos", target_os = "ios"),
+    any(target_os = "macos", target_os = "ios", target_os = "visionos"),
 ) }
 
 /// Dispatch on an [`Id`]'s backend to a backend-generic method.

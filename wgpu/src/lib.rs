@@ -1770,7 +1770,7 @@ impl Instance {
         // Method intentionally kept verbose to keep it a bit easier to follow!
 
         // On macOS and iOS, at least one of Metal, Vulkan or GLES backend must be enabled.
-        let is_mac_or_ios = cfg!(target_os = "macos") || cfg!(target_os = "ios");
+        let is_mac_or_ios = cfg!(target_os = "macos") || cfg!(target_os = "ios") || cfg!(target_os = "visionos");
         if is_mac_or_ios {
             cfg!(feature = "metal")
                 || cfg!(feature = "vulkan-portability")
