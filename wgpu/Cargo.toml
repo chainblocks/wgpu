@@ -127,12 +127,12 @@ workspace = true
 features = ["gles"]
 
 # We want the wgpu-core Vulkan backend on Unix (but not emscripten, macOS, iOS) and Windows.
-[target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios", target_os = "visionos"), not(target_os = "macos"))))'.dependencies.wgc]
+[target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios"), not(target_os = "visionos"), not(target_os = "macos"))))'.dependencies.wgc]
 workspace = true
 features = ["vulkan"]
 
 # We want the wgpu-core GLES backend on Unix (but not macOS, iOS).
-[target.'cfg(all(unix, not(target_os = "ios", target_os = "visionos"), not(target_os = "macos")))'.dependencies.wgc]
+[target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "visionos"), not(target_os = "macos")))'.dependencies.wgc]
 workspace = true
 features = ["gles"]
 
@@ -143,7 +143,7 @@ workspace = true
 [target.'cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))'.dependencies]
 hal = { workspace = true }
 
-[target.'cfg(all(not(target_arch = "wasm32"), unix, not(target_os = "ios", target_os = "visionos"), not(target_os = "macos")))'.dependencies]
+[target.'cfg(all(not(target_arch = "wasm32"), unix, not(target_os = "ios"), not(target_os = "visionos"), not(target_os = "macos")))'.dependencies]
 hal = { workspace = true, features = ["renderdoc"] }
 
 [target.'cfg(windows)'.dependencies]
