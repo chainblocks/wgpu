@@ -20,7 +20,7 @@ source code span with each element.
 [`Handle<T>`]: Handle
 */
 
-mod handle;
+pub mod handle;
 mod handle_set;
 mod handlevec;
 mod range;

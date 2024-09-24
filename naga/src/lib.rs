@@ -264,6 +264,7 @@ mod span;
 pub mod valid;
 
 pub use crate::arena::{Arena, Handle, Range, UniqueArena};
+pub use crate::arena::handle::Index;
 
 pub use crate::span::{SourceLocation, Span, SpanContext, WithSpan};
 #[cfg(feature = "arbitrary")]

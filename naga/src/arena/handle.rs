@@ -88,7 +88,7 @@ impl<T> hash::Hash for Handle<T> {
 }
 
 impl<T> Handle<T> {
-    pub(crate) const fn new(index: Index) -> Self {
+    pub const fn new(index: Index) -> Self {
         Handle {
             index,
             marker: PhantomData,
@@ -101,7 +101,7 @@ impl<T> Handle<T> {
     }
 
     /// Convert a `usize` index into a `Handle<T>`.
-    pub(super) fn from_usize(index: usize) -> Self {
+    pub fn from_usize(index: usize) -> Self {
         let handle_index = u32::try_from(index)
             .ok()
             .and_then(Index::new)
@@ -110,7 +110,7 @@ impl<T> Handle<T> {
     }
 
     /// Convert a `usize` index into a `Handle<T>`, without range checks.
-    pub(super) const unsafe fn from_usize_unchecked(index: usize) -> Self {
+    pub const unsafe fn from_usize_unchecked(index: usize) -> Self {
         Handle::new(Index::new_unchecked(index as u32))
     }
 
