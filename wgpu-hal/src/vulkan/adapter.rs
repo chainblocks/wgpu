@@ -1005,7 +1005,7 @@ impl PhysicalDeviceProperties {
         }
 
         // Require `VK_KHR_portability_subset` on macOS/iOS
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "visionos"))]
         extensions.push(khr::portability_subset::NAME);
 
         // Require `VK_EXT_texture_compression_astc_hdr` if the associated feature was requested
